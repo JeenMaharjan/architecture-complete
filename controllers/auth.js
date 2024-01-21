@@ -1,6 +1,16 @@
 const User = require("../models/user.js");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
+const { nanoid } = require("nanoid");
+const AWS = require("aws-sdk");
+
+const awsConfig = {
+    accessKeyId: process.env.MY_AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.MY_AWS_SECRET_ACCESS_KEY,
+    region: process.env.MY_REGION,
+    apiVersion: process.env.AWS_API_VERSION,
+  };
+  const SES = new AWS.SES(awsConfig);
 
 exports.register = async(req, res) => {
     console.log(req.body);
@@ -118,3 +128,47 @@ exports.masterpassword = async (req, res) => {
         return res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+exports.sendMessage = async (req, res) => {
+    const {name , email , desc} = req.body
+    try {
+        const params = {
+            Source: process.env.EMAIL_FROM,
+            Destination: {
+              ToAddresses: [process.env.EMAIL_FROM],
+            },
+            Message: {
+              Body: {
+                Html: {
+                  Charset: "UTF-8",
+                  Data: `
+                      <html>
+                        <h1>Contact Message</h1>
+                        <p>Message From ${email} by ${name} :</p>
+                        <h2 style="color:red;">${desc}</h2>
+                        <i>imagetechstudio.com.np</i>
+                      </html>
+                    `,
+                },
+              },
+              Subject: {
+                Charset: "UTF-8",
+                Data: "Contact Message",
+              },
+            },
+          };
+      
+          const emailSent = SES.sendEmail(params).promise();
+          emailSent
+            .then((data) => {
+              console.log(data);
+              res.json({ ok: true });
+            })
+            .catch((err) => {
+              console.log(err);
+            });
+    } catch (error) {
+        
+    }
+    
+}
